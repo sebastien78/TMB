@@ -165,6 +165,7 @@ if (window.typingMindCloudSync) {
         "tcs_localMigrated",
         "tcs_migrationBackup",
         "tcs_last-tombstone-cleanup",
+        "tcs_last_sync_utc_local",
         "referrer",
         "TM_useLastVerifiedToken",
         "TM_useStateUpdateHistory",
@@ -2810,10 +2811,8 @@ if (window.typingMindCloudSync) {
           this.saveMetadata();
           await this.updateSyncDiagnosticsCache();
           
-          // --- DÉBUT DU BLOC FINAL CORRIGÉ ---
           this.logger.log("success", `Sync to cloud completed - ${itemsSynced} items processed.`);
           
-          // AJOUT POUR LA SYNCHRONISATION (Étape 1)
           try {
               this.logger.log("info", "Updating sync-manifest.json...");
               const manifest = {
@@ -2821,10 +2820,15 @@ if (window.typingMindCloudSync) {
               };
               await this.storageService.upload("sync-manifest.json", manifest, true);
               this.logger.log("success", "sync-manifest.json updated successfully.");
+
+              // --- Étape 2: Sauvegarder le timestamp localement ---
+              localStorage.setItem("tcs_last_sync_utc_local", manifest.last_sync_utc);
+              this.logger.log("info", "Local sync timestamp updated.", manifest.last_sync_utc);
+              // --- Fin de l'ajout ---
+
           } catch (manifestError) {
               this.logger.log("error", "Failed to update sync-manifest.json", manifestError.message);
           }
-          // --- FIN DU BLOC FINAL CORRIGÉ ---
 
         } else {
           this.logger.log(
@@ -3110,6 +3114,36 @@ if (window.typingMindCloudSync) {
       }
     }
     async performFullSync() {
+      // --- DÉBUT DE L'AJOUT - ÉTAPE 2 : DÉTECTION DES MISES À JOUR ---
+      try {
+          this.logger.log("info", "Checking for cloud updates from sync-manifest.json...");
+          const cloudManifest = await this.storageService.download("sync-manifest.json", true);
+          const cloudTimestamp = cloudManifest.last_sync_utc;
+          const localTimestamp = localStorage.getItem("tcs_last_sync_utc_local");
+
+          this.logger.log("info", `Cloud timestamp: ${cloudTimestamp || 'N/A'}`);
+          this.logger.log("info", `Local timestamp: ${localTimestamp || 'N/A'}`);
+
+          if (!localTimestamp) {
+              this.logger.log("warning", "This is the first sync for this device. Will pull from cloud.");
+          } else if (cloudTimestamp > localTimestamp) {
+              this.logger.log("warning", "CLOUD IS NEWER. A sync from cloud to local is required.");
+              // Dans le futur, nous déclencherons une synchronisation descendante ici.
+          } else if (cloudTimestamp === localTimestamp) {
+              this.logger.log("success", "This device is up-to-date with the cloud.");
+          } else {
+              this.logger.log("info", "This device has local changes to push (local is newer).");
+          }
+
+      } catch (error) {
+          if (error.code === 'NoSuchKey' || error.statusCode === 404) {
+              this.logger.log("info", "sync-manifest.json not found. Assuming first-ever sync.");
+          } else {
+              this.logger.log("error", "Could not check cloud manifest.", error.message);
+          }
+      }
+      // --- FIN DE L'AJOUT ---
+
       if (!this.storageService || !this.storageService.isConfigured()) {
         this.logger.log(
           "skip",
