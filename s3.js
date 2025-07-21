@@ -2814,19 +2814,24 @@ if (window.typingMindCloudSync) {
             // --- DÉBUT DU NOUVEAU BLOC À INSERER ---
           this.logger.log("success", `Sync to cloud completed - ${itemsSynced} items processed.`);
           
-          // --- AJOUT POUR LA SYNCHRONISATION INTELLIGENTE (Étape 1) ---
+          // --- DÉBUT DU NOUVEAU BLOC CORRIGÉ ---
+          this.logger.log("success", `Sync to cloud completed - ${itemsSynced} items processed.`);
+          
+          // --- AJOUT POUR LA SYNCHRONISATION INTELLIGENTE (Étape 1 v2) ---
           try {
               this.logger.log("info", "Updating sync-manifest.json...");
               const manifest = {
                   last_sync_utc: new Date().toISOString()
               };
+              // 'this.storageService' est déjà disponible ici, on le réutilise.
               await this.storageService.upload("sync-manifest.json", manifest, true);
               this.logger.log("success", "sync-manifest.json updated successfully.");
           } catch (manifestError) {
               this.logger.log("error", "Failed to update sync-manifest.json", manifestError.message);
           }
-          // --- FIN DE L'AJOUT ---
-// --- FIN DU NOUVEAU BLOC À INSERER ---
+          // --- FIN DE L'AJOUT v2 ---
+// --- FIN DU NOUVEAU BLOC CORRIGÉ ---
+
 
           );
         } else {
