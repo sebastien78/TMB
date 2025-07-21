@@ -2809,28 +2809,23 @@ if (window.typingMindCloudSync) {
           this.setLastCloudSync(cloudMetadata.lastSync);
           this.saveMetadata();
           await this.updateSyncDiagnosticsCache();
-          this.logger.log(
-            "success",
-// --- DÉBUT DU BLOC CORRIGÉ ---
-this.logger.log("success", `Sync to cloud completed - ${itemsSynced} items processed.`);
+          
+          // --- DÉBUT DU BLOC FINAL CORRIGÉ ---
+          this.logger.log("success", `Sync to cloud completed - ${itemsSynced} items processed.`);
+          
+          // AJOUT POUR LA SYNCHRONISATION (Étape 1)
+          try {
+              this.logger.log("info", "Updating sync-manifest.json...");
+              const manifest = {
+                  last_sync_utc: new Date().toISOString()
+              };
+              await this.storageService.upload("sync-manifest.json", manifest, true);
+              this.logger.log("success", "sync-manifest.json updated successfully.");
+          } catch (manifestError) {
+              this.logger.log("error", "Failed to update sync-manifest.json", manifestError.message);
+          }
+          // --- FIN DU BLOC FINAL CORRIGÉ ---
 
-// --- AJOUT POUR LA SYNCHRONISATION INTELLIGENTE (Étape 1) ---
-try {
-    this.logger.log("info", "Updating sync-manifest.json...");
-    const manifest = {
-        last_sync_utc: new Date().toISOString()
-    };
-    await this.storageService.upload("sync-manifest.json", manifest, true);
-    this.logger.log("success", "sync-manifest.json updated successfully.");
-} catch (manifestError) {
-    this.logger.log("error", "Failed to update sync-manifest.json", manifestError.message);
-}
-// --- FIN DE L'AJOUT ---
-// --- FIN DU BLOC CORRIGÉ ---
-
-
-
-          );
         } else {
           this.logger.log(
             "info",
